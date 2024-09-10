@@ -21,7 +21,6 @@ A real-time chat application built with **Go** and **Fiber** using **WebSockets*
 
 - [Go](https://golang.org/doc/install) (v1.19 or above)
 - [PostgreSQL](https://www.postgresql.org/download/) (with UUID extension)
-- [Git](https://git-scm.com/)
 
 ### Clone the Repository
 
