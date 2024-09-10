@@ -39,14 +39,17 @@ go mod tidy
 
 ## Configure Database
 
-Create a PostgreSQL database and configure the connection details in .env file to match your PostgreSQL credentials:
+Create a PostgreSQL database and configure the connection details in .env file to match your PostgreSQL credentials.
 
+##### Example:
+
+```bash
 DB_HOST=localhost
 DB_PORT=5432
 DB_USER=postgres
 DB_PASSWORD=postgres
-DB_NAME=chat_app
-
+DB_NAME=chat_DB
+```
 
 Run the following SQL command to ensure the UUID extension is available:
 
