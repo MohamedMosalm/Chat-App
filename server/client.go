@@ -4,7 +4,10 @@ import (
 	"log"
 	"time"
 
+	"github.com/MohamedMosalm/Chat-App/db"
+	"github.com/MohamedMosalm/Chat-App/models"
 	"github.com/gofiber/websocket/v2"
+	"github.com/google/uuid"
 )
 
 type Client struct {
@@ -36,6 +39,23 @@ func handleClient(roomManager *RoomManager, client *Client) {
         }
     }()
 
+    var messages []models.Message
+    if err := db.DB.Where("room_id = ?", client.Room.ID).Order("timestamp asc").Find(&messages).Error; err != nil {
+        log.Printf("Error loading messages for room %s: %v", client.Room.ID, err)
+    }
+
+    for _, msg := range messages {
+        wsMessage := Message{
+            SenderID:  msg.SenderID.String(),
+            Content:   msg.Content,
+            Timestamp: msg.Timestamp.Format("15:04:05"),
+        }
+        if err := client.Conn.WriteJSON(wsMessage); err != nil {
+            log.Printf("Error sending previous message to %s: %v", client.ID, err)
+            return
+        }
+    }
+
     for {
         var msg Message
         err := client.Conn.ReadJSON(&msg)
@@ -44,9 +64,28 @@ func handleClient(roomManager *RoomManager, client *Client) {
             break
         }
 
-        msg.SenderID = client.ID
-        log.Printf("Received message from client %s: %s", client.ID, msg.Content)
+        var senderUUID uuid.UUID
+        if client.ID != "Server" {
+            senderUUID, err = uuid.Parse(client.ID)  
+            if err != nil {
+                log.Printf("Error parsing sender ID: %v", err)
+                break
+            }
+        }
 
+        newMessage := models.Message{
+            RoomID:   client.Room.ID,
+            SenderID: senderUUID,
+            Content:  msg.Content,
+            Timestamp: time.Now(),
+        }
+        
+        if err := db.DB.Create(&newMessage).Error; err != nil {
+            log.Printf("Error saving message to the database: %v", err)
+        }
+        
+
+        msg.SenderID = client.ID
         client.Room.Broadcast <- msg
     }
 }

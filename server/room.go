@@ -3,10 +3,12 @@ package main
 import (
 	"log"
 	"sync"
+
+	"github.com/google/uuid"
 )
 
 type Room struct {
-	ID         string
+	ID         uuid.UUID
 	Name       string
 	Clients    map[string]*Client
 	Register   chan *Client
@@ -15,7 +17,7 @@ type Room struct {
 	Mutex      sync.Mutex
 }
 
-func NewRoom(id, name string) *Room {
+func NewRoom(id uuid.UUID, name string) *Room {
 	return &Room{
 		ID:         id,
 		Name:       name,
@@ -33,7 +35,7 @@ func (r *Room) Run() {
 			r.Mutex.Lock()
 			r.Clients[client.ID] = client
 			r.Mutex.Unlock()
-			log.Printf("Client connected: %s (%s) to room %s with ID: %s", client.Username, client.ID, r.Name, r.ID)
+			log.Printf("Client connected: %s (%s) to room %s with ID: %s", client.Username, client.ID, r.Name, r.ID.String())
 		case client := <-r.Unregister:
 			r.Mutex.Lock()
 			if _, ok := r.Clients[client.ID]; ok {

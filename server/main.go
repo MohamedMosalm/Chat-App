@@ -3,10 +3,13 @@ package main
 import (
 	"log"
 
+	"github.com/MohamedMosalm/Chat-App/db"
 	"github.com/gofiber/fiber/v2"
 )
 
 func main() {
+	db.ConnectDB()
+
 	app := fiber.New()
 
 	roomManager := NewRoomManager()

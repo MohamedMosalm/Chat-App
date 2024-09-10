@@ -4,17 +4,20 @@ import (
 	"log"
 	"sync"
 
+	"github.com/MohamedMosalm/Chat-App/db"
+	"github.com/MohamedMosalm/Chat-App/models"
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 type RoomManager struct {
-	Rooms map[string]*Room
+	Rooms map[uuid.UUID]*Room
 	Mutex sync.Mutex
 }
 
 func NewRoomManager() *RoomManager {
 	return &RoomManager{
-		Rooms: make(map[string]*Room),
+		Rooms: make(map[uuid.UUID]*Room),
 	}
 }
 
@@ -27,17 +30,37 @@ func (rm *RoomManager) GetRoomByName(name string) (*Room, bool) {
 			return room, true
 		}
 	}
-	return nil, false
+
+	var dbRoom models.Room
+	result := db.DB.Where("name = ?", name).First(&dbRoom)
+
+	if result.Error == gorm.ErrRecordNotFound {
+		return nil, false
+	}
+
+	room := NewRoom(dbRoom.ID, dbRoom.Name)
+	rm.Rooms[dbRoom.ID] = room
+	go room.Run()
+	return room, true
 }
 
 func (rm *RoomManager) CreateRoom(name string) *Room {
 	rm.Mutex.Lock()
 	defer rm.Mutex.Unlock()
 
-	roomID := uuid.New().String()
+	roomID := uuid.New()
 	newRoom := NewRoom(roomID, name)
 	rm.Rooms[roomID] = newRoom
 	go newRoom.Run()
+
+	newRoomRecord := models.Room{
+		ID:        roomID,
+		Name:      name,
+	}
+	if err := db.DB.Create(&newRoomRecord).Error; err != nil {
+		log.Printf("Error creating room in the database: %v", err)
+	}
+
 	log.Printf("Created new room: %s (ID: %s)", name, roomID)
 	return newRoom
 }

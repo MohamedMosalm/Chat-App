@@ -3,9 +3,12 @@ package main
 import (
 	"log"
 
+	"github.com/MohamedMosalm/Chat-App/db"
+	"github.com/MohamedMosalm/Chat-App/models"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/websocket/v2"
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 func CreateRoomHandler(c *fiber.Ctx, roomManager *RoomManager) error {
@@ -46,13 +49,29 @@ func WebSocketHandler(c *websocket.Conn, roomManager *RoomManager) {
 		return
 	}
 
-	roomManager.Mutex.Lock()
-	room, exists := roomManager.Rooms[roomID]
-	roomManager.Mutex.Unlock()
-	if !exists {
-		log.Println("Room does not exist")
+	roomUUID, err := uuid.Parse(roomID)
+	if err != nil {
+		log.Println("Invalid room ID")
 		c.Close()
 		return
+	}
+
+	roomManager.Mutex.Lock()
+	room, exists := roomManager.Rooms[roomUUID]
+	roomManager.Mutex.Unlock()
+
+	if !exists {
+		roomRecord := &models.Room{}
+		result := db.DB.Where("id = ?", roomUUID).First(roomRecord)
+		if result.Error == gorm.ErrRecordNotFound {
+			log.Println("Room does not exist")
+			c.Close()
+			return
+		}
+
+		room = NewRoom(roomRecord.ID, roomRecord.Name)
+		roomManager.Rooms[roomUUID] = room
+		go room.Run()
 	}
 
 	if clientID == "" {
